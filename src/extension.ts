@@ -1,26 +1,58 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+
+import { createFileTemplate } from './fileTemplates';
 
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  console.log(
+    'Congratulations, your extension "new-react-component" is now active!',
+  );
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "new-react-component" is now active!');
+  const validateComponentName = (inputName: string) => {
+    if (inputName.includes(' ')) {
+      return 'Component name cannot have spaces';
+    }
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	let disposable = vscode.commands.registerCommand('new-react-component.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
+    if (/\.tsx?$/.test(inputName)) {
+      return 'You don’t need to include the extension';
+    }
 
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from new-react-component!');
-	});
+    return null;
+  };
 
-	context.subscriptions.push(disposable);
+  const showPrompt = () =>
+    vscode.window.showInputBox({
+      prompt: 'Component name',
+      validateInput: validateComponentName,
+    });
+
+  let disposable = vscode.commands.registerCommand(
+    'new-react-component.new-comp',
+    async ({ path }) => {
+      const componentName = await showPrompt();
+      if (!componentName) {
+        return;
+      }
+
+      const dirName = `${path}/${componentName}`;
+      const fileName = `${dirName}/${componentName}.tsx`;
+
+      const fileContent = createFileTemplate(componentName);
+
+      fs.mkdirSync(dirName);
+      fs.writeFileSync(fileName, fileContent);
+
+      // Display a message box to the user
+      const document = await vscode.workspace.openTextDocument(fileName);
+      await vscode.window.showTextDocument(document);
+    },
+  );
+
+  context.subscriptions.push(disposable);
 }
 
 // this method is called when your extension is deactivated
